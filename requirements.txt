@@ -9,3 +9,4 @@ google-auth-httplib2
 openai
 vosk
 vk_api
+tweepy
