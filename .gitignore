@@ -7,6 +7,5 @@ final_videos/
 *.mp4
 *.jpg
 *.png
-topic_history.txt
 temp_vosk.wav
 vosk-model-small-en-us-0.15/
