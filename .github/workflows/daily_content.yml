@@ -88,3 +88,11 @@ jobs:
           VK_GROUP_ID: ${{ secrets.VK_GROUP_ID }}
         run: |
           python publish_content.py
+
+      - name: Commit Topic History (Memory)
+        run: |
+          git config --global user.name "IELTS Zoom Bot"
+          git config --global user.email "bot@ieltszoom.ai"
+          git add topic_history.txt
+          git commit -m "Update topic history [skip ci]" || echo "No changes to commit"
+          git push origin main || echo "Push failed"
