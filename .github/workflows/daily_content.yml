@@ -34,6 +34,16 @@ jobs:
           echo "POLLINATIONS_API_KEY=${{ secrets.POLLINATIONS_API_KEY }}" > .env
           # Add other non-secret env vars here if needed
 
+      - name: Cache Vosk Model
+        uses: actions/cache@v3
+        with:
+          path: vosk-model-small-en-us-0.15
+          key: vosk-model-v1
+
+      - name: Download Vosk Model
+        run: |
+          python download_model.py
+
       - name: Generate Content
         run: |
           python generate_content.py
