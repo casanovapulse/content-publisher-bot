@@ -24,16 +24,21 @@ def generate_script():
         with open(history_file, "r") as f:
             past_topics = f.read()
 
+    # Randomness boost
+    random_seed = random.randint(1000, 9999)
+
     prompt = f"""
     TASK: Generate a 45-second IELTS vocabulary lesson.
-    FOCUS: High-end "Band 9" vocabulary or phrases.
-    PREVIOUS TOPICS (DO NOT REPEAT): {past_topics}
+    FOCUS: A RARE, sophisticated "Band 9" vocabulary word or academic phrase. 
+    RANDOM SEED: {random_seed}
+    PREVIOUS TOPICS (STRICTLY FORBIDDEN): {past_topics}
     
-    RULES:
+    CRITICAL RULES:
     1. DO NOT include conversational filler like "Absolutely".
-    2. Start the spoken script IMMEDIATELY.
+    2. Start the spoken script IMMEDIATELY with the hook.
     3. Output EXACTLY 3 hashtags.
     4. Duration: 45-50 seconds.
+    5. Be unique. Avoid common idioms like "piece of cake" or "stone unturned" if they are in the history.
     
     JSON STRUCTURE:
     {{
@@ -41,9 +46,9 @@ def generate_script():
         "basic_way": "The common way",
         "better_way": "The advanced way",
         "example": "Full sentence example",
-        "full_spoken_script": "Deep dive explanation and example. Direct start.",
-        "social_title": "Hooky Video Title for Youtube/Instagram",
-        "social_hashtags": ["#Tag1", "#Tag2", "#Tag3"]
+        "full_spoken_script": "Explain the nuance. Direct start.",
+        "social_title": "IELTS Band 9 Upgrade: [PHRASE]",
+        "social_hashtags": ["#IELTS", "#Vocabulary", "#English"]
     }}
     """
     
@@ -55,7 +60,7 @@ def generate_script():
     data = {
         "model": "gemini-fast", 
         "messages": [
-            {"role": "system", "content": "You are a robotic script output tool. You strictly follow JSON format. You never repeat past topics. No conversational filler."},
+            {"role": "system", "content": "You are a robotic script generator. You strictly avoid repetition. You never use conversational filler. You provide rare academic language."},
             {"role": "user", "content": prompt}
         ],
         "response_format": {"type": "json_object"}
