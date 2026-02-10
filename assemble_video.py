@@ -11,8 +11,28 @@ from vosk import Model, KaldiRecognizer
 # Ensure Vosk model exists
 if not os.path.exists("vosk-model-small-en-us-0.15"):
     print("Vosk model missing! Please run 'python download_model.py' first.")
-    # Fallback or exit
     sys.exit(1)
+
+def get_font(size, bold=True):
+    """Robust font loader for Windows and Linux."""
+    # Priority list of fonts
+    font_names = [
+        "arialbd.ttf" if bold else "arial.ttf",
+        "Arial_Bold.ttf" if bold else "Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "DejaVuSans-Bold.ttf"
+    ]
+    
+    for name in font_names:
+        try:
+            return ImageFont.truetype(name, size)
+        except:
+            continue
+            
+    print(f"Warning: No premium fonts found. Falling back to default (size {size} ignored).")
+    return ImageFont.load_default()
 
 def transcribe_audio(audio_path):
     """
@@ -63,11 +83,7 @@ def generate_background_image(width=1080, height=1920):
     draw.rectangle([(0, 0), (width, 150)], fill=BRAND_YELLOW)
     
     # Add Logo Text in Black on Yellow
-    try:
-        font_logo = ImageFont.truetype("arial.ttf", 60)
-    except IOError:
-        font_logo = ImageFont.load_default()
-        
+    font_logo = get_font(60, bold=True)
     draw.text((50, 45), "IELTS ZOOM", font=font_logo, fill="black", stroke_width=2)
     
     # Bottom Yellow Line for Frame
@@ -83,10 +99,7 @@ def create_info_panel(text, draw, top_margin, font_size=80, color="white", width
     """
     Draws wrapped text onto an existing ImageDraw object and returns the next available Y position.
     """
-    try:
-        font = ImageFont.truetype("arialbd.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
+    font = get_font(font_size, bold=True)
         
     margin = 80
     max_w = width - (2 * margin)
@@ -122,10 +135,7 @@ def create_subtitle_image(text, width=1080, height=250, font_size=90):
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     
-    try:
-        font = ImageFont.truetype("arialbd.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
+    font = get_font(font_size, bold=True)
         
     bbox = draw.textbbox((0, 0), text, font=font)
     text_w = bbox[2] - bbox[0]
