@@ -15,6 +15,7 @@ from upload_facebook import upload_to_facebook
 from upload_threads import upload_to_threads
 from upload_twitter import upload_to_twitter
 from upload_telegram import upload_to_telegram
+from upload_vk import upload_to_vk
 
 def main():
     """Upload video to configured platforms."""
@@ -118,6 +119,16 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
             print(f"❌ Telegram Failed: {e}")
     else:
         print("⏭️  Skipping Telegram (Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID)")
+
+    # --- VK ---
+    if os.getenv('VK_ACCESS_TOKEN') and os.getenv('VK_GROUP_ID'):
+        try:
+            print("\n🇷🇺 Uploading to VK...")
+            upload_to_vk(video_file, description, social_title)
+        except Exception as e:
+            print(f"❌ VK Failed: {e}")
+    else:
+        print("⏭️  Skipping VK (VK_ACCESS_TOKEN or VK_GROUP_ID missing)")
 
 if __name__ == '__main__':
     main()
