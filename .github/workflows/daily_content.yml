@@ -90,9 +90,13 @@ jobs:
           python publish_content.py
 
       - name: Commit Topic History (Memory)
+        if: always()
         run: |
           git config --global user.name "IELTS Zoom Bot"
           git config --global user.email "bot@ieltszoom.ai"
+          git fetch origin main
+          git checkout main
+          git pull origin main --rebase
           git add topic_history.txt
           git commit -m "Update topic history [skip ci]" || echo "No changes to commit"
-          git push origin main || echo "Push failed"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main || echo "Push failed"
