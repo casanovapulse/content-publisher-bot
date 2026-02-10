@@ -49,11 +49,11 @@ def upload_to_vk(video_path, description="", title=""):
         upload = vk_api.VkUpload(vk_session)
         
         # Prepare message
-        message = description if description else "💭 Daily dating advice for you!\n\n#DatingAdvice #RelationshipTips #GirlsDatingRules"
+        message = description if description else "🚀 Daily IELTS Vocabulary Upgrade!\n\n#IELTS #English #Vocabulary"
         
         # Ensure message is not empty (VK requirement)
         if not message.strip():
-            message = "💭 New video!"
+            message = "📚 New IELTS Video!"
         
         # Upload video to community
         print("\n📤 Uploading video to VK...")
@@ -62,7 +62,7 @@ def upload_to_vk(video_path, description="", title=""):
         # vk_api handles everything: getting upload URL, uploading file, and saving
         video = upload.video(
             video_file=str(video_path),
-            name=title or 'Dating Advice Video',
+            name=title or 'IELTS Lesson',
             description=description[:220] if description else '',  # VK 220 char limit
             group_id=group_id_int,
             wallpost=0  # Don't auto-post, we'll do it manually
