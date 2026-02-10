@@ -1,0 +1,12 @@
+.env
+__pycache__/
+generated_content/
+final_videos/
+*.mp3
+*.wav
+*.mp4
+*.jpg
+*.png
+topic_history.txt
+temp_vosk.wav
+vosk-model-small-en-us-0.15/

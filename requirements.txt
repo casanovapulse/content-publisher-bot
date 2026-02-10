@@ -1,11 +1,10 @@
 requests
-moviepy
+moviepy<2.0.0
 python-dotenv
 pillow
-numpy
+numpy<2.1.0
 google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
 openai
 vosk
-moviepy.editor
