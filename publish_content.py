@@ -23,6 +23,24 @@ from upload_vk import upload_to_vk
 
 def main():
     """Upload video to configured platforms."""
+    # Diagnostics
+    print("\n🔍 Environment Check:")
+    required_vars = [
+        'YT_REFRESH_TOKEN', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_ACCOUNT_ID',
+        'FACEBOOK_ACCESS_TOKEN', 'FACEBOOK_PAGE_ID', 'THREADS_ACCESS_TOKEN', 
+        'THREADS_USER_ID', 'TIKTOK_ACCESS_TOKEN', 'VK_ACCESS_TOKEN'
+    ]
+    found_vars = []
+    for var in required_vars:
+        val = os.getenv(var)
+        if val:
+            # Mask the token but show it exists
+            mask = f"{val[:5]}...{val[-5:]}" if len(val) > 10 else "***"
+            print(f"  ✅ {var} is set ({mask})")
+            found_vars.append(var)
+        else:
+            print(f"  ❌ {var} is MISSING")
+    
     # Locate video file
     video_file = Path('ielts_short.mp4')
     if not video_file.exists():
@@ -78,7 +96,10 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
         results['YouTube'] = "⏭️  Skipped (Missing Token)"
 
     # --- Instagram ---
-    if os.getenv('INSTAGRAM_ACCESS_TOKEN'):
+    ig_token = os.getenv('INSTAGRAM_ACCESS_TOKEN') or os.getenv('FACEBOOK_ACCESS_TOKEN')
+    ig_id = os.getenv('INSTAGRAM_ACCOUNT_ID') or os.getenv('IG_USER_ID')
+    
+    if ig_token and ig_id:
         try:
             print("\n📸 Uploading to Instagram Reels...")
             upload_to_instagram(video_file, description)
@@ -90,10 +111,14 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
             print(f"❌ Instagram Failed: {e}")
             results['Instagram'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        results['Instagram'] = "⏭️  Skipped (Missing Token)"
+        reason = "Missing Token" if not ig_token else "Missing ID"
+        results['Instagram'] = f"⏭️  Skipped ({reason})"
 
     # --- Facebook ---
-    if os.getenv('FACEBOOK_ACCESS_TOKEN') and os.getenv('FACEBOOK_PAGE_ID'):
+    fb_token = os.getenv('FACEBOOK_ACCESS_TOKEN')
+    fb_id = os.getenv('FACEBOOK_PAGE_ID')
+    
+    if fb_token and fb_id:
         try:
             print("\n📘 Uploading to Facebook...")
             upload_to_facebook(video_file, description)
@@ -102,7 +127,8 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
             print(f"❌ Facebook Failed: {e}")
             results['Facebook'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        results['Facebook'] = "⏭️  Skipped (Missing Token)"
+        reason = "Missing Token" if not fb_token else "Missing ID"
+        results['Facebook'] = f"⏭️  Skipped ({reason})"
 
     # --- Threads ---
     if os.getenv('THREADS_ACCESS_TOKEN') and os.getenv('THREADS_USER_ID'):
