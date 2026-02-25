@@ -28,19 +28,33 @@ def upload_to_instagram(video_path, caption, is_story=False):
     user_id = os.getenv('INSTAGRAM_ACCOUNT_ID') or os.getenv('IG_USER_ID')
     
     # Debug info (masked)
-    def mask(s): return f"{s[:4]}...{s[-4:]}" if s and len(s) > 8 else ("PLACEHOLDER (***)" if s == "***" else "MISSING")
-    print(f"[instagram] User ID: {user_id}")
+    def mask(s): return f"{s[:10]}...{s[-4:]}" if s and len(s) > 10 else ("PLACEHOLDER" if s == "***" else "MISSING")
+    print(f"[instagram] User ID Provided: {user_id}")
     print(f"[instagram] Access Token: {mask(access_token)}")
 
     if not access_token:
-        error_msg = "❌ INSTAGRAM_ACCESS_TOKEN not set"
-        print(f"[instagram] {error_msg}")
-        raise ValueError(error_msg)
+        raise ValueError("❌ INSTAGRAM_ACCESS_TOKEN not set")
     
+    # AUTO-DETECTION: If token is IGAA (Personal/Standard), the ID might be different
+    if access_token.startswith('IGAA'):
+        print("[instagram] 🔍 Detected 'IGAA' token (Instagram Basic/Standard API)")
+        print("[instagram] Fetching correct ID for this token...")
+        try:
+            me_resp = requests.get(f"https://graph.instagram.com/me?fields=id,username&access_token={access_token}", timeout=10)
+            if me_resp.status_code == 200:
+                me_data = me_resp.json()
+                detected_id = me_data.get('id')
+                if detected_id and detected_id != user_id:
+                    print(f"[instagram] ⚠️  ID Mismatch! Provided: {user_id}, Detected: {detected_id}")
+                    print(f"[instagram] 🔄 Using detected ID: {detected_id}")
+                    user_id = detected_id
+            else:
+                print(f"[instagram] ⚠️  Could not verify token: {me_resp.text}")
+        except Exception as e:
+            print(f"[instagram] ⚠️  Error during ID verification: {e}")
+
     if not user_id:
-        error_msg = "❌ INSTAGRAM_ACCOUNT_ID not set"
-        print(f"[instagram] {error_msg}")
-        raise ValueError(error_msg)
+        raise ValueError("❌ INSTAGRAM_ACCOUNT_ID not set")
     
     print(f"[instagram] ✅ Credentials loaded")
     

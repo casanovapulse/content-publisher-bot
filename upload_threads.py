@@ -136,7 +136,7 @@ def upload_to_threads(video_path, text):
         
         # Step 3: Wait for processing
         print(f"[threads] ⏳ Step 3: Waiting for video processing...")
-        max_wait = 120
+        max_wait = 300 # Increased to 5 minutes as Threads can be slow
         waited = 0
         
         while waited < max_wait:

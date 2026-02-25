@@ -120,8 +120,11 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
     if os.getenv('TIKTOK_ACCESS_TOKEN'):
         try:
             print("\n🎵 Uploading to TikTok...")
-            upload_to_tiktok(video_file, social_title, description) 
-            results['TikTok'] = "✅ Success"
+            tiktok_result = upload_to_tiktok(video_file, social_title, description) 
+            if tiktok_result:
+                results['TikTok'] = "✅ Success"
+            else:
+                results['TikTok'] = "❌ Failed (Check logs)"
         except Exception as e:
             print(f"❌ TikTok Failed: {e}")
             results['TikTok'] = f"❌ Failed: {str(e)[:50]}..."
@@ -129,7 +132,8 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
         results['TikTok'] = "⏭️  Skipped (Missing Token)"
         
     # --- Twitter / X ---
-    if os.getenv('TWITTER_API_KEY') and os.getenv('TWITTER_ACCESS_TOKEN'):
+    twitter_vars = ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN', 'TWITTER_ACCESS_SECRET']
+    if all(os.getenv(var) for var in twitter_vars):
         try:
             print("\n🐦 Uploading to Twitter...")
             upload_to_twitter(video_file, description)
@@ -138,7 +142,7 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
             print(f"❌ Twitter Failed: {e}")
             results['Twitter/X'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        results['Twitter/X'] = "⏭️  Skipped (Missing Token)"
+        results['Twitter/X'] = "⏭️  Skipped (Missing Credentials)"
 
     # --- Telegram ---
     if os.getenv('TELEGRAM_BOT_TOKEN') and os.getenv('TELEGRAM_CHANNEL_ID'):

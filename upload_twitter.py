@@ -40,9 +40,9 @@ def upload_to_twitter(video_path, text):
     print("[twitter] 🐦 Uploading to Twitter/X...")
     
     # Check video file exists and size
-    video_path = Path(video_file)
+    video_path = Path(video_path)
     if not video_path.exists():
-        raise FileNotFoundError(f"[twitter] ❌ Video file not found: {video_file}")
+        raise FileNotFoundError(f"[twitter] ❌ Video file not found: {video_path}")
     
     file_size_mb = video_path.stat().st_size / (1024 * 1024)
     print(f"[twitter] Video size: {file_size_mb:.2f} MB")
@@ -86,7 +86,7 @@ def upload_to_twitter(video_path, text):
         print("[twitter] Posting tweet...")
         
         # Twitter has 280 character limit
-        tweet_text = caption[:280] if len(caption) > 280 else caption
+        tweet_text = text[:280] if len(text) > 280 else text
         
         response = client.create_tweet(
             text=tweet_text,
