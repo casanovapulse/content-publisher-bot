@@ -6,6 +6,10 @@ import os
 import json
 from pathlib import Path
 import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Import platform-specific uploaders
 from upload_to_youtube import upload_to_youtube
@@ -58,77 +62,115 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
 
     tags = [tag.strip('#') for tag in hashtags_list[:3]]
     
+    # Store results for final summary
+    results = {}
+
     # --- YouTube ---
     if os.getenv('YT_REFRESH_TOKEN'):
         try:
             print("\n📺 Uploading to YouTube...")
             upload_to_youtube(video_file, social_title, description, tags)
+            results['YouTube'] = "✅ Success"
         except Exception as e:
             print(f"❌ YouTube Failed: {e}")
+            results['YouTube'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping YouTube (YT_REFRESH_TOKEN missing)")
+        results['YouTube'] = "⏭️  Skipped (Missing Token)"
 
     # --- Instagram ---
-    if os.getenv('IG_ACCESS_TOKEN'):
+    if os.getenv('INSTAGRAM_ACCESS_TOKEN'):
         try:
-            print("\n📸 Uploading to Instagram...")
+            print("\n📸 Uploading to Instagram Reels...")
             upload_to_instagram(video_file, description)
+            
+            print("\n📸 Uploading to Instagram Story...")
+            upload_to_instagram(video_file, description, is_story=True)
+            results['Instagram'] = "✅ Success (Reel + Story)"
         except Exception as e:
             print(f"❌ Instagram Failed: {e}")
+            results['Instagram'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping Instagram (IG_ACCESS_TOKEN missing)")
+        results['Instagram'] = "⏭️  Skipped (Missing Token)"
+
+    # --- Facebook ---
+    if os.getenv('FACEBOOK_ACCESS_TOKEN') and os.getenv('FACEBOOK_PAGE_ID'):
+        try:
+            print("\n📘 Uploading to Facebook...")
+            upload_to_facebook(video_file, description)
+            results['Facebook'] = "✅ Success"
+        except Exception as e:
+            print(f"❌ Facebook Failed: {e}")
+            results['Facebook'] = f"❌ Failed: {str(e)[:50]}..."
+    else:
+        results['Facebook'] = "⏭️  Skipped (Missing Token)"
 
     # --- Threads ---
     if os.getenv('THREADS_ACCESS_TOKEN') and os.getenv('THREADS_USER_ID'):
         try:
             print("\n🧵 Uploading to Threads...")
             upload_to_threads(video_file, description)
+            results['Threads'] = "✅ Success"
         except Exception as e:
             print(f"❌ Threads Failed: {e}")
+            results['Threads'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping Threads (THREADS keys missing)")
+        results['Threads'] = "⏭️  Skipped (Missing Token)"
 
     # --- TikTok ---
     if os.getenv('TIKTOK_ACCESS_TOKEN'):
         try:
             print("\n🎵 Uploading to TikTok...")
-            # Note: TikTok logic might need specific adjustment depending on the implementation
             upload_to_tiktok(video_file, social_title, description) 
+            results['TikTok'] = "✅ Success"
         except Exception as e:
             print(f"❌ TikTok Failed: {e}")
+            results['TikTok'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping TikTok (TIKTOK_ACCESS_TOKEN missing)")
+        results['TikTok'] = "⏭️  Skipped (Missing Token)"
         
     # --- Twitter / X ---
     if os.getenv('TWITTER_API_KEY') and os.getenv('TWITTER_ACCESS_TOKEN'):
         try:
             print("\n🐦 Uploading to Twitter...")
             upload_to_twitter(video_file, description)
+            results['Twitter/X'] = "✅ Success"
         except Exception as e:
             print(f"❌ Twitter Failed: {e}")
+            results['Twitter/X'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping Twitter (Credentials missing)")
+        results['Twitter/X'] = "⏭️  Skipped (Missing Token)"
 
     # --- Telegram ---
     if os.getenv('TELEGRAM_BOT_TOKEN') and os.getenv('TELEGRAM_CHANNEL_ID'):
         try:
             print("\n✈️ Uploading to Telegram...")
-            # Assuming upload_to_telegram takes (file_path, caption)
             upload_to_telegram(video_file, description)
+            results['Telegram'] = "✅ Success"
         except Exception as e:
             print(f"❌ Telegram Failed: {e}")
+            results['Telegram'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping Telegram (Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID)")
+        results['Telegram'] = "⏭️  Skipped (Missing Token)"
 
     # --- VK ---
     if os.getenv('VK_ACCESS_TOKEN') and os.getenv('VK_GROUP_ID'):
         try:
             print("\n🇷🇺 Uploading to VK...")
             upload_to_vk(video_file, description, social_title)
+            results['VK'] = "✅ Success"
         except Exception as e:
             print(f"❌ VK Failed: {e}")
+            results['VK'] = f"❌ Failed: {str(e)[:50]}..."
     else:
-        print("⏭️  Skipping VK (VK_ACCESS_TOKEN or VK_GROUP_ID missing)")
+        results['VK'] = "⏭️  Skipped (Missing Token)"
+
+    # --- Final Summary ---
+    print("\n" + "="*40)
+    print("📢 FINAL PUBLISHING SUMMARY")
+    print("="*40)
+    for platform, status in results.items():
+        print(f"{platform:<12} : {status}")
+    print("="*40)
 
 if __name__ == '__main__':
     main()
