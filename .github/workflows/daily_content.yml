@@ -52,14 +52,7 @@ jobs:
         run: |
           python assemble_video.py
 
-      - name: Archive Video Artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ielts-video
-          path: ielts_short.mp4
-          retention-days: 5
-      
+     
       - name: Publish to Social Media
         env:
           # YouTube
