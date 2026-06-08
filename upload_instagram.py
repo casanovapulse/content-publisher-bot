@@ -147,27 +147,52 @@ def upload_to_instagram(video_path, caption, is_story=False):
         print(f"[instagram] ✅ Container created: {container_id}")
         
         # Step 3: Wait for processing
-        print(f"[instagram] ⏳ Step 3: Waiting for video processing...")
-        max_wait = 180 # Increased wait time
+        print(f"[instagram] ⏳ Step 3: Checking video processing status...")
+        max_wait = 180
         waited = 0
+        poll_interval = 15
+        status_check_broken = False
         
         while waited < max_wait:
-            # Check status on graph.facebook.com (primary endpoint)
             status_url = f"https://graph.facebook.com/v21.0/{container_id}"
             status_params = {
                 'fields': 'status_code',
                 'access_token': access_token
             }
             
-            status_response = requests.get(status_url, params=status_params, timeout=30)
+            try:
+                status_response = requests.get(status_url, params=status_params, timeout=(10, 20))
+            except Exception:
+                status_response = None
             
-            # Fallback if status check fails on facebook.com
-            if status_response.status_code != 200:
-                status_url = f"https://graph.instagram.com/v21.0/{container_id}"
-                status_response = requests.get(status_url, params=status_params, timeout=30)
-
-            status_data = status_response.json()
+            if not status_response or status_response.status_code != 200:
+                try:
+                    status_url = f"https://graph.instagram.com/v21.0/{container_id}"
+                    status_response = requests.get(status_url, params=status_params, timeout=(10, 20))
+                except Exception:
+                    pass
+            
+            status_data = status_response.json() if status_response else {}
             status_code = status_data.get('status_code', 'UNKNOWN')
+            
+            is_auth_error = False
+            if status_data and 'error' in status_data:
+                error_code = status_data['error'].get('code', 0)
+                error_subcode = status_data['error'].get('error_subcode', 0)
+                print(f"[instagram] Status check error: code={error_code}, subcode={error_subcode}")
+                if error_subcode == 33 or error_code == 100:
+                    is_auth_error = True
+                    if not status_check_broken:
+                        print(f"[instagram] Status endpoint not accessible (auth issue). Using fixed 60s delay.")
+                        status_check_broken = True
+            
+            if is_auth_error:
+                waited += poll_interval
+                if waited >= 60:
+                    print(f"[instagram] Auth error persisted, proceeding to publish after {waited}s")
+                    break
+                time.sleep(poll_interval)
+                continue
             
             print(f"[instagram] Status: {status_code} (waited {waited}s)")
             
@@ -178,14 +203,15 @@ def upload_to_instagram(video_path, caption, is_story=False):
                 error_msg = status_data.get('error_message', 'Video processing failed')
                 print(f"[instagram] ❌ {error_msg}")
                 raise Exception(error_msg)
+            elif status_code == 'UNKNOWN' and waited >= 120:
+                print(f"[instagram] Still UNKNOWN after {waited}s, publishing anyway...")
+                break
             
-            time.sleep(10)
-            waited += 10
+            time.sleep(poll_interval)
+            waited += poll_interval
         
         if waited >= max_wait:
-            error_msg = "Video processing timed out"
-            print(f"[instagram] ❌ {error_msg}")
-            raise Exception(error_msg)
+            print(f"[instagram] Max wait reached, attempting to publish anyway...")
         
         # Step 4: Publish
         print(f"[instagram] 📤 Step 4: Publishing to Instagram... (Adding 5s buffer)")
