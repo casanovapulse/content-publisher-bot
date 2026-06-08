@@ -40,7 +40,8 @@ def upload_to_instagram(video_path, caption, is_story=False):
         print("[instagram] 🔍 Detected 'IGAA' token (Instagram Basic/Standard API)")
         print("[instagram] Fetching correct ID for this token...")
         try:
-            me_resp = requests.get(f"https://graph.instagram.com/me?fields=id,username&access_token={access_token}", timeout=10)
+            # Use graph.facebook.com instead of graph.instagram.com for better compatibility
+            me_resp = requests.get(f"https://graph.facebook.com/me?fields=id,username&access_token={access_token}", timeout=10)
             if me_resp.status_code == 200:
                 me_data = me_resp.json()
                 detected_id = me_data.get('id')
@@ -111,8 +112,8 @@ def upload_to_instagram(video_path, caption, is_story=False):
         # Step 2: Create Instagram container with video URL
         print(f"[instagram] 📦 Step 2: Creating Instagram {media_type} container...")
         
-        # v21.0 or v18.0? The "new" one used v21.0
-        container_url = f"https://graph.instagram.com/v21.0/{user_id}/media"
+        # Use graph.facebook.com as primary endpoint (more reliable for IGAA tokens)
+        container_url = f"https://graph.facebook.com/v21.0/{user_id}/media"
         container_params = {
             'media_type': media_type,
             'video_url': video_url,
@@ -132,9 +133,9 @@ def upload_to_instagram(video_path, caption, is_story=False):
             print(f"[instagram] ❌ Container creation failed: {error_msg}")
             print(f"[instagram] Full response: {container_response.text[:500]}")
             
-            # Fallback to graph.facebook.com if graph.instagram.com fails
-            print(f"[instagram] 🔄 Retrying with Facebook Graph API endpoint...")
-            container_url = f"https://graph.facebook.com/v21.0/{user_id}/media"
+            # Fallback to graph.instagram.com if graph.facebook.com fails
+            print(f"[instagram] 🔄 Retrying with Instagram Graph API endpoint...")
+            container_url = f"https://graph.instagram.com/v21.0/{user_id}/media"
             container_response = requests.post(container_url, params=container_params, timeout=60)
             
             if container_response.status_code != 200:
@@ -151,8 +152,8 @@ def upload_to_instagram(video_path, caption, is_story=False):
         waited = 0
         
         while waited < max_wait:
-            # Check status on the same endpoint used for creation
-            status_url = f"https://graph.instagram.com/v21.0/{container_id}"
+            # Check status on graph.facebook.com (primary endpoint)
+            status_url = f"https://graph.facebook.com/v21.0/{container_id}"
             status_params = {
                 'fields': 'status_code',
                 'access_token': access_token
@@ -160,9 +161,9 @@ def upload_to_instagram(video_path, caption, is_story=False):
             
             status_response = requests.get(status_url, params=status_params, timeout=30)
             
-            # Fallback if status check fails on instagram.com
+            # Fallback if status check fails on facebook.com
             if status_response.status_code != 200:
-                status_url = f"https://graph.facebook.com/v21.0/{container_id}"
+                status_url = f"https://graph.instagram.com/v21.0/{container_id}"
                 status_response = requests.get(status_url, params=status_params, timeout=30)
 
             status_data = status_response.json()
@@ -187,24 +188,38 @@ def upload_to_instagram(video_path, caption, is_story=False):
             raise Exception(error_msg)
         
         # Step 4: Publish
-        print(f"[instagram] 📤 Step 4: Publishing to Instagram...")
-        publish_url = f"https://graph.instagram.com/v21.0/{user_id}/media_publish"
+        print(f"[instagram] 📤 Step 4: Publishing to Instagram... (Adding 5s buffer)")
+        time.sleep(5) # Small buffer because IG sometimes says FINISHED before it's actually ready
+        
+        # Use graph.facebook.com as primary endpoint for publishing
+        publish_url = f"https://graph.facebook.com/v21.0/{user_id}/media_publish"
         publish_params = {
             'creation_id': container_id,
             'access_token': access_token
         }
         
-        publish_response = requests.post(publish_url, params=publish_params, timeout=60)
+        # Robust Retry Logic for Publishing
+        max_publish_retries = 3
+        publish_response = None
         
-        if publish_response.status_code != 200:
-            # Fallback to facebook.com
-            publish_url = f"https://graph.facebook.com/v21.0/{user_id}/media_publish"
+        for attempt in range(max_publish_retries):
             publish_response = requests.post(publish_url, params=publish_params, timeout=60)
-
-        if publish_response.status_code != 200:
-            error_data = publish_response.json() if publish_response.text else {}
+            
+            if publish_response.status_code == 200:
+                break
+            else:
+                print(f"[instagram] ⚠️ Publish attempt {attempt+1} failed. Retrying...")
+                time.sleep(10)
+            
+            # Fallback to instagram.com if facebook.com consistently fails
+            if attempt == max_publish_retries - 1:
+                publish_url = f"https://graph.instagram.com/v21.0/{user_id}/media_publish"
+                publish_response = requests.post(publish_url, params=publish_params, timeout=60)
+        
+        if not publish_response or publish_response.status_code != 200:
+            error_data = publish_response.json() if publish_response and publish_response.text else {}
             error_msg = error_data.get('error', {}).get('message', 'Unknown error')
-            print(f"[instagram] ❌ Publish failed: {error_msg}")
+            print(f"[instagram] ❌ Publish failed after retries: {error_msg}")
             raise Exception(f"Instagram Publish Error: {error_msg}")
         
         media_id = publish_response.json().get('id')
