@@ -2,165 +2,172 @@ import os
 import requests
 import json
 import random
+import base64
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY")
 BASE_URL = "https://gen.pollinations.ai"
 
-# Ensure API key is present
 if not POLLINATIONS_API_KEY:
-    print("Warning: POLLINATIONS_API_KEY not found in .env. Using free tier (if applicable) or failing.")
-    # Assuming free tier might work for some models, but user has key.
+    print("Warning: POLLINATIONS_API_KEY not found in .env.")
 
 def generate_script():
-    """Generates a direct IELTS vocabulary upgrade script with social metadata and history tracking."""
-    
     history_file = "topic_history.txt"
     past_topics = ""
+    past_topics_lower = ""
     if os.path.exists(history_file):
         with open(history_file, "r") as f:
-            past_topics = f.read()
+            all_history = f.read().strip()
+        topics_list = [t.strip() for t in all_history.split(",") if t.strip()]
+        past_topics = ", ".join(topics_list[-30:])
+        past_topics_lower = past_topics.lower()
 
-    # Randomness boost
-    random_seed = random.randint(1000, 9999)
+    random_seed = random.randint(10000, 99999)
 
     prompt = f"""
     TASK: Generate a 45-second IELTS vocabulary lesson.
-    FOCUS: A RARE, sophisticated "Band 9" vocabulary word or academic phrase. 
+    FOCUS: A RARE, sophisticated "Band 9" vocabulary word or academic phrase.
     RANDOM SEED: {random_seed}
     PREVIOUS TOPICS (STRICTLY FORBIDDEN): {past_topics}
-    
+
     CRITICAL RULES:
     1. DO NOT include conversational filler like "Absolutely".
     2. Start the spoken script IMMEDIATELY with the hook.
     3. Output EXACTLY 3 hashtags.
     4. Duration: 45-50 seconds.
-    5. Be unique. Avoid common idioms like "piece of cake" or "stone unturned" if they are in the history.
-    
+    5. Be unique. NEVER repeat or use anything similar to previous topics.
+    6. The example MUST be SHORT - maximum 10-12 words, one simple sentence.
+
     JSON STRUCTURE:
     {{
-        "display_title": "UPGRADE: [PHRASE]",
-        "basic_way": "The common way",
-        "better_way": "The advanced way",
-        "example": "Full sentence example",
+        "display_title": "[PHRASE]",
+        "basic_way": "The common way (short phrase)",
+        "better_way": "The advanced way (short phrase)",
+        "example": "Short example sentence (max 12 words)",
         "full_spoken_script": "Explain the nuance. Direct start.",
-        "social_title": "IELTS Band 9 Upgrade: [PHRASE]",
+        "social_title": "IELTS Band 9: [PHRASE]",
         "social_hashtags": ["#IELTS", "#Vocabulary", "#English"]
     }}
     """
-    
+
     headers = {
         "Authorization": f"Bearer {POLLINATIONS_API_KEY}",
         "Content-Type": "application/json"
     }
-    
-    data = {
-        "model": "gemini-fast", 
-        "messages": [
-            {"role": "system", "content": "You are a robotic script generator. You strictly avoid repetition. You never use conversational filler. You provide rare academic language."},
-            {"role": "user", "content": prompt}
-        ],
-        "response_format": {"type": "json_object"}
-    }
-    
-    try:
-        response = requests.post(f"{BASE_URL}/v1/chat/completions", headers=headers, json=data)
-        response.raise_for_status()
-        script_data = response.json()['choices'][0]['message']['content']
-        
-        # Cleanup and Load
-        if "```json" in script_data:
-            script_data = script_data.replace("```json", "").replace("```", "")
-        script_data = json.loads(script_data)
-        
-        # Log to history
-        with open(history_file, "a") as f:
-            f.write(f"{script_data.get('display_title')}, ")
-            
-        return script_data
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
 
-import base64
+    FALLBACK_PHRASES = [
+        "To Pivot Strategically", "To Leverage Synergies", "To Navigate Ambiguity",
+        "To Cultivate Resilience", "To Articulate Vision", "To Operationalize Concepts",
+        "To Democratize Access", "To Contextualize Findings", "To Problematize Assumptions",
+        "To Synthesize Perspectives", "To Scrutinize Evidence", "To Substantiate Claims"
+    ]
 
-# Define Audio Model Constants for Consistency
-TTS_MODEL = "openai-audio"
-TTS_VOICE = "alloy" # Options: alloy, echo, fable, onyx, nova, shimmer
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        try:
+            current_seed = random_seed + attempt
+            data = {
+                "model": "gemini-fast",
+                "messages": [
+                    {"role": "system", "content": "You are a robotic script generator. You strictly avoid repetition. You never use conversational filler. You provide rare academic language."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": min(0.85 + (attempt * 0.05), 1.0),
+                "seed": current_seed
+            }
+
+            response = requests.post(f"{BASE_URL}/v1/chat/completions", headers=headers, json=data)
+            response.raise_for_status()
+            script_data = response.json()['choices'][0]['message']['content']
+
+            if "```json" in script_data:
+                script_data = script_data.replace("```json", "").replace("```", "")
+            script_data = json.loads(script_data)
+
+            display_title = script_data.get('display_title', '')
+            if display_title and display_title.lower() in past_topics_lower:
+                if attempt < max_attempts - 1:
+                    print(f"Repeat topic '{display_title}', retrying...")
+                    continue
+                else:
+                    fallback = random.choice(FALLBACK_PHRASES)
+                    print(f"Using fallback: {fallback}")
+                    script_data["display_title"] = fallback
+                    script_data["better_way"] = fallback
+                    script_data["example"] = f"The ability to {fallback.lower()} is crucial for success."
+                    script_data["full_spoken_script"] = (
+                        f'"{fallback}" means to {fallback.lower()}. '
+                        f"Use this in academic writing or IELTS essays. "
+                        f"For example: 'The ability to {fallback.lower()} is crucial for success.'"
+                    )
+                    script_data["social_title"] = f"IELTS Band 9: {fallback}"
+
+            with open(history_file, "a") as f:
+                f.write(f"{script_data.get('display_title')}, ")
+
+            return script_data
+
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Response: {e.response.text[:300]}")
+            if attempt == max_attempts - 1:
+                return None
+
+    return None
+
 
 def generate_audio_segment(text, filename, output_dir="generated_content"):
-    """Generates audio speech for a given text segment using Pollinations AI (OpenAI Audio)."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
-    url = f"{BASE_URL}/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {POLLINATIONS_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    # Request audio via modalities (OpenAI 4o-audio style)
-    data = {
-        "model": TTS_MODEL, 
-        "messages": [
-            {"role": "user", "content": text}
-        ],
-        "modalities": ["text", "audio"],
-        "audio": {"voice": TTS_VOICE, "format": "mp3"}
-    }
-    
+
+    import edge_tts
+    import asyncio
+
+    audio_path = os.path.join(output_dir, f"{filename}.mp3")
+    print(f"Generating audio via Edge TTS...")
+
+    async def _generate():
+        communicate = edge_tts.Communicate(text, voice="en-US-JennyNeural")
+        await communicate.save(audio_path)
+
     try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code != 200:
-            print(f"Error generating audio for {filename}: {response.status_code} {response.text}")
-            return None
-            
-        result = response.json()
-        if 'choices' in result and 'audio' in result['choices'][0]['message']:
-            audio_data = result['choices'][0]['message']['audio']['data']
-            audio_path = os.path.join(output_dir, f"{filename}.mp3")
-            with open(audio_path, "wb") as f:
-                f.write(base64.b64decode(audio_data))
-            print(f"Generated audio: {audio_path}")
-            return audio_path
-        else:
-            print(f"No audio data in response for {filename}")
-            return None
-            
+        asyncio.run(_generate())
+        print(f"Generated audio: {audio_path}")
+        return audio_path
     except Exception as e:
-        print(f"Exception generating audio: {e}")
+        print(f"Audio generation failed: {e}")
         return None
 
+
 def generate_full_cycle():
-    """Execute full content generation cycle and return result dictionary."""
     print("Generating IELTS Content Script...")
     script = generate_script()
-    
+
     if not script:
         print("Failed to generate script.")
         return None
-        
+
     print(json.dumps(script, indent=2))
-    
-    # Save script
+
     if not os.path.exists("generated_content"):
         os.makedirs("generated_content")
-        
+
     with open("generated_content/script.json", "w") as f:
         json.dump(script, f, indent=2)
-        
-    print("\nGenerating Single Continuous Audio...")
+
+    print("\nGenerating Audio...")
     audio_path = generate_audio_segment(script['full_spoken_script'], "full_audio")
-            
+
     return {
         "script": script,
         "audio_file": audio_path,
-        "images": [] 
+        "images": []
     }
+
 
 if __name__ == "__main__":
     generate_full_cycle()

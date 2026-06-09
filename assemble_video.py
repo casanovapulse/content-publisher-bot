@@ -199,7 +199,7 @@ def assemble_video():
     # Example
     example = script.get("example", "")
     if example:
-        create_info_panel(f"Example:\n\"{example}\"", draw, y_pos, font_size=50, color="white")
+        create_info_panel(f"Example:\n\"{example}\"", draw, y_pos, font_size=38, color="white")
         
     ui_overlay = ImageClip(np.array(ui_img)).set_duration(duration)
     layers = [video_base, ui_overlay]
