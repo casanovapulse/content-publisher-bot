@@ -124,23 +124,30 @@ def generate_audio_segment(text, filename, output_dir="generated_content"):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    import edge_tts
-    import asyncio
-
     audio_path = os.path.join(output_dir, f"{filename}.mp3")
-    print(f"Generating audio via Edge TTS...")
-
-    async def _generate():
-        communicate = edge_tts.Communicate(text, voice="en-US-JennyNeural")
-        await communicate.save(audio_path)
 
     try:
+        import edge_tts
+        import asyncio
+        print(f"Generating audio via Edge TTS...")
+        async def _generate():
+            communicate = edge_tts.Communicate(text, voice="en-US-JennyNeural")
+            await communicate.save(audio_path)
         asyncio.run(_generate())
         print(f"Generated audio: {audio_path}")
         return audio_path
     except Exception as e:
-        print(f"Audio generation failed: {e}")
-        return None
+        print(f"Edge TTS failed ({e}), falling back to Google TTS...")
+        try:
+            from gtts import gTTS
+            print(f"Generating audio via Google TTS...")
+            tts = gTTS(text, lang='en', tld='com')
+            tts.save(audio_path)
+            print(f"Generated audio: {audio_path}")
+            return audio_path
+        except Exception as e2:
+            print(f"Google TTS also failed: {e2}")
+            return None
 
 
 def generate_full_cycle():
