@@ -28,7 +28,7 @@ def generate_script():
 
     prompt = f"""
     TASK: Generate a 45-second IELTS vocabulary lesson.
-    FOCUS: A RARE, sophisticated "Band 9" vocabulary word or academic phrase.
+    FOCUS: A RARE, sophisticated "Band 9" vocabulary PHRASE (like "to harmonize dichotomies" or "to obviate the need for"). NOT a single word.
     RANDOM SEED: {random_seed}
     PREVIOUS TOPICS (STRICTLY FORBIDDEN): {past_topics}
 
@@ -39,14 +39,15 @@ def generate_script():
     4. Duration: 45-50 seconds.
     5. Be unique. NEVER repeat or use anything similar to previous topics.
     6. The example MUST be SHORT - maximum 10-12 words, one simple sentence.
+    7. display_title MUST be a PHRASE (3-6 words), NOT a single word. Examples: "To harmonize dichotomies", "To perpetuate a myth", "To obviate the need for", "To eschew dogma".
 
     JSON STRUCTURE:
     {{
-        "display_title": "[PHRASE]",
-        "basic_way": "The common way (short phrase)",
-        "better_way": "The advanced way (short phrase)",
-        "example": "Short example sentence (max 12 words)",
-        "full_spoken_script": "Explain the nuance. Direct start.",
+        "display_title": "[PHRASE like 'to harmonize dichotomies' - 3 to 6 words, NOT a single word]",
+        "basic_way": "The common/simple way to say it (short phrase)",
+        "better_way": "The advanced Band 9 phrase (same as display_title)",
+        "example": "Short example sentence (max 12 words) using the phrase",
+        "full_spoken_script": "Explain the nuance. Direct start with the phrase.",
         "social_title": "IELTS Band 9: [PHRASE]",
         "social_hashtags": ["#IELTS", "#Vocabulary", "#English"]
     }}
