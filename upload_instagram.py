@@ -1,4 +1,4 @@
-﻿"""
+"""
 Instagram Reels Upload - Using tmpfiles.org for Public URL
 Uploads video to tmpfiles.org, then uses URL for Instagram API
 """
@@ -205,97 +205,97 @@ def upload_to_instagram(video_path, caption, is_story=False):
             status_check_broken = False
             
             while waited < max_wait:
-                status_url = f"https://graph.facebook.com/v21.0/{container_id}"
-                status_params = {
-                    'fields': 'status_code',
-                    'access_token': access_token
-                }
-                
-                try:
-                    status_response = requests.get(status_url, params=status_params, timeout=(10, 20))
-                except Exception:
-                    status_response = None
-                
-                if not status_response or status_response.status_code != 200:
+                    status_url = f"https://graph.facebook.com/v21.0/{container_id}"
+                    status_params = {
+                        'fields': 'status_code',
+                        'access_token': access_token
+                    }
+                    
                     try:
-                        status_url = f"https://graph.instagram.com/v21.0/{container_id}"
                         status_response = requests.get(status_url, params=status_params, timeout=(10, 20))
                     except Exception:
-                        pass
-                
-                status_data = status_response.json() if status_response else {}
-                status_code = status_data.get('status_code', 'UNKNOWN')
-                
-                is_auth_error = False
-                if status_data and 'error' in status_data:
-                    error_code = status_data['error'].get('code', 0)
-                    error_subcode = status_data['error'].get('error_subcode', 0)
-                    error_message = status_data['error'].get('message', '')
-                    print(f"[instagram] Status check error: code={error_code}, subcode={error_subcode}, msg={error_message}")
-                    if error_subcode == 33 or error_code == 100:
-                        is_auth_error = True
-                        if not status_check_broken:
-                            print(f"[instagram] Status endpoint not accessible (auth issue). Using fixed 60s delay.")
-                            status_check_broken = True
-                
-                if is_auth_error:
-                    waited += poll_interval
-                    if waited >= 60:
-                        print(f"[instagram] Auth error persisted, proceeding to publish after {waited}s")
-                        break
-                    time.sleep(poll_interval)
-                    continue
-                
-                print(f"[instagram] Status: {status_code} (waited {waited}s)")
-                
-                if status_code == 'FINISHED':
-                    print(f"[instagram] ✅ Video processing complete!")
-                    processing_success = True
-                    break
-                elif status_code == 'ERROR':
-                    error_msg = status_data.get('error_message', '')
-                    if not error_msg:
-                        error_msg = status_data.get('error', {}).get('message', '')
-                    if not error_msg:
-                        error_msg = status_data.get('status_detail', '')
-                    if not error_msg:
-                        error_msg = 'Video processing failed (no details from Instagram API)'
-                    print(f"[instagram] ❌ {error_msg}")
-                    print(f"[instagram] Full status response: {json.dumps(status_data, indent=2)[:500]}")
+                        status_response = None
                     
-                    if processing_attempt < max_processing_attempts - 1:
-                        print(f"[instagram] 🔄 Retrying with a fresh container...")
-                        time.sleep(5)
-                        with open(video_path_obj, 'rb') as vf:
-                            tf = {'file': ('video.mp4', vf, 'video/mp4')}
-                            new_temp = requests.post('https://tmpfiles.org/api/v1/upload', files=tf, timeout=180)
-                        if new_temp.status_code == 200:
-                            new_url = new_temp.json().get('data', {}).get('url', '').replace('tmpfiles.org/', 'tmpfiles.org/dl/')
-                            new_params = {
-                                'media_type': media_type,
-                                'video_url': new_url,
-                                'access_token': access_token,
-                                'caption': caption_limited
-                            }
-                            if not is_story:
-                                new_params['share_to_feed'] = 'false'
-                            retry_resp = requests.post(container_url, params=new_params, timeout=60)
-                            if retry_resp.status_code == 200:
-                                container_id = retry_resp.json().get('id')
-                                print(f"[instagram] ✅ New container created: {container_id}")
-                                break  # Break inner while, outer for will retry
-                            else:
-                                err = retry_resp.json().get('error', {}).get('message', '')
-                                print(f"[instagram] ⚠️ Retry container failed: {err}")
-                    if processing_attempt >= max_processing_attempts - 1:
-                        raise Exception(error_msg)
-                    break  # Break while to retry from outer for loop
-                elif status_code == 'UNKNOWN' and waited >= 120:
-                    print(f"[instagram] Still UNKNOWN after {waited}s, publishing anyway...")
-                    break
-                
-                time.sleep(poll_interval)
-            waited += poll_interval
+                    if not status_response or status_response.status_code != 200:
+                        try:
+                            status_url = f"https://graph.instagram.com/v21.0/{container_id}"
+                            status_response = requests.get(status_url, params=status_params, timeout=(10, 20))
+                        except Exception:
+                            pass
+                    
+                    status_data = status_response.json() if status_response else {}
+                    status_code = status_data.get('status_code', 'UNKNOWN')
+                    
+                    is_auth_error = False
+                    if status_data and 'error' in status_data:
+                        error_code = status_data['error'].get('code', 0)
+                        error_subcode = status_data['error'].get('error_subcode', 0)
+                        error_message = status_data['error'].get('message', '')
+                        print(f"[instagram] Status check error: code={error_code}, subcode={error_subcode}, msg={error_message}")
+                        if error_subcode == 33 or error_code == 100:
+                            is_auth_error = True
+                            if not status_check_broken:
+                                print(f"[instagram] Status endpoint not accessible (auth issue). Using fixed 60s delay.")
+                                status_check_broken = True
+                    
+                    if is_auth_error:
+                        waited += poll_interval
+                        if waited >= 60:
+                            print(f"[instagram] Auth error persisted, proceeding to publish after {waited}s")
+                            break
+                        time.sleep(poll_interval)
+                        continue
+                    
+                    print(f"[instagram] Status: {status_code} (waited {waited}s)")
+                    
+                    if status_code == 'FINISHED':
+                        print(f"[instagram] ✅ Video processing complete!")
+                        processing_success = True
+                        break
+                    elif status_code == 'ERROR':
+                        error_msg = status_data.get('error_message', '')
+                        if not error_msg:
+                            error_msg = status_data.get('error', {}).get('message', '')
+                        if not error_msg:
+                            error_msg = status_data.get('status_detail', '')
+                        if not error_msg:
+                            error_msg = 'Video processing failed (no details from Instagram API)'
+                        print(f"[instagram] ❌ {error_msg}")
+                        print(f"[instagram] Full status response: {json.dumps(status_data, indent=2)[:500]}")
+                        
+                        if processing_attempt < max_processing_attempts - 1:
+                            print(f"[instagram] 🔄 Retrying with a fresh container...")
+                            time.sleep(5)
+                            with open(video_path_obj, 'rb') as vf:
+                                tf = {'file': ('video.mp4', vf, 'video/mp4')}
+                                new_temp = requests.post('https://tmpfiles.org/api/v1/upload', files=tf, timeout=180)
+                            if new_temp.status_code == 200:
+                                new_url = new_temp.json().get('data', {}).get('url', '').replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+                                new_params = {
+                                    'media_type': media_type,
+                                    'video_url': new_url,
+                                    'access_token': access_token,
+                                    'caption': caption_limited
+                                }
+                                if not is_story:
+                                    new_params['share_to_feed'] = 'false'
+                                retry_resp = requests.post(container_url, params=new_params, timeout=60)
+                                if retry_resp.status_code == 200:
+                                    container_id = retry_resp.json().get('id')
+                                    print(f"[instagram] ✅ New container created: {container_id}")
+                                    break  # Break inner while, outer for will retry
+                                else:
+                                    err = retry_resp.json().get('error', {}).get('message', '')
+                                    print(f"[instagram] ⚠️ Retry container failed: {err}")
+                        if processing_attempt >= max_processing_attempts - 1:
+                            raise Exception(error_msg)
+                        break  # Break while to retry from outer for loop
+                    elif status_code == 'UNKNOWN' and waited >= 120:
+                        print(f"[instagram] Still UNKNOWN after {waited}s, publishing anyway...")
+                        break
+                    
+                    time.sleep(poll_interval)
+                    waited += poll_interval
         
         if not processing_success and waited >= max_wait:
             print(f"[instagram] Max wait reached, attempting to publish anyway...")
