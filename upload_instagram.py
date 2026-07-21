@@ -76,75 +76,99 @@ def upload_to_instagram(video_path, caption, is_story=False):
     print(f"[instagram] Caption length: {len(caption_limited)} characters")
     
     try:
-        # Step 1: Upload to tmpfiles.org to get public URL
-        print(f"[instagram] 📤 Step 1: Uploading to temporary hosting...")
+        # Step 1: Upload video DIRECTLY to Instagram API
+        # Using binary file upload instead of tmpfiles.org (which Instagram can't reliably download from)
+        print(f"[instagram] 📤 Step 1: Uploading video directly to Instagram API...")
         
-        with open(video_path_obj, 'rb') as video_file:
-            files = {'file': ('video.mp4', video_file, 'video/mp4')}
-            temp_response = requests.post(
-                'https://tmpfiles.org/api/v1/upload',
-                files=files,
-                timeout=180
-            )
-        
-        if temp_response.status_code != 200:
-            error_msg = f"Failed to upload to temporary hosting: {temp_response.status_code}"
-            print(f"[instagram] ❌ {error_msg}")
-            print(f"[instagram] Response: {temp_response.text[:200]}")
-            raise Exception(error_msg)
-        
-        temp_data = temp_response.json()
-        if temp_data.get('status') != 'success':
-            error_msg = f"Temporary hosting failed: {temp_data}"
-            print(f"[instagram] ❌ {error_msg}")
-            raise Exception(error_msg)
-        
-        # tmpfiles.org returns URL in format: https://tmpfiles.org/12345
-        # We need direct download link: https://tmpfiles.org/dl/12345
-        temp_url = temp_data.get('data', {}).get('url', '')
-        video_url = temp_url.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
-        
-        print(f"[instagram] ✅ Temporary URL created: {video_url}")
-        
-        if not user_id or user_id == 'None' or user_id == '***':
-             # Note: logic for '***' added to handle placeholders in logs
-             pass
-
-        # Step 2: Create Instagram container with video URL
-        print(f"[instagram] 📦 Step 2: Creating Instagram {media_type} container...")
-        
-        # Use graph.facebook.com as primary endpoint (more reliable for IGAA tokens)
+        # Use graph.facebook.com as primary endpoint
         container_url = f"https://graph.facebook.com/v21.0/{user_id}/media"
+        
+        # Build params for container creation
         container_params = {
-            'media_type': media_type,
-            'video_url': video_url,
-            'access_token': access_token
+            'access_token': access_token,
+            'media_type': media_type
         }
         
         if not is_story:
             container_params['caption'] = caption_limited
             container_params['share_to_feed'] = 'false'
-            container_params['thumb_offset'] = '5000' # Set thumbnail to 5 seconds in to avoid dark start
         
-        container_response = requests.post(container_url, params=container_params, timeout=60)
+        # Upload the video file as binary in the 'source' field
+        print(f"[instagram] 🚀 Uploading video binary ({video_path_obj.stat().st_size / (1024*1024):.2f} MB)...")
         
-        if container_response.status_code != 200:
+        with open(video_path_obj, 'rb') as video_file:
+            # Graph API supports multipart upload with 'source' parameter for direct binary
+            files = {'source': ('video.mp4', video_file, 'video/mp4')}
+            container_response = requests.post(
+                container_url,
+                data=container_params,
+                files=files,
+                timeout=300  # 5 min timeout for upload
+            )
+        
+        if container_response.status_code == 200:
+            container_data = container_response.json()
+            container_id = container_data.get('id')
+            print(f"[instagram] ✅ Direct upload successful! Container: {container_id}")
+        else:
             error_data = container_response.json() if container_response.text else {}
             error_msg = error_data.get('error', {}).get('message', 'Unknown error')
-            print(f"[instagram] ❌ Container creation failed: {error_msg}")
+            print(f"[instagram] ❌ Direct upload failed: {error_msg}")
             print(f"[instagram] Full response: {container_response.text[:500]}")
             
-            # Fallback to graph.instagram.com if graph.facebook.com fails
-            print(f"[instagram] 🔄 Retrying with Instagram Graph API endpoint...")
-            container_url = f"https://graph.instagram.com/v21.0/{user_id}/media"
-            container_response = requests.post(container_url, params=container_params, timeout=60)
+            # Fallback: try graph.instagram.com endpoint with direct upload
+            print(f"[instagram] 🔄 Retrying with Instagram Graph API endpoint (direct upload)...")
+            fallback_url = f"https://graph.instagram.com/v21.0/{user_id}/media"
             
-            if container_response.status_code != 200:
-                error_data = container_response.json() if container_response.text else {}
-                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
-                raise Exception(f"Instagram Container Error: {error_msg}")
+            with open(video_path_obj, 'rb') as video_file:
+                files = {'source': ('video.mp4', video_file, 'video/mp4')}
+                fallback_params = {
+                    'access_token': access_token,
+                    'media_type': media_type,
+                    'caption': caption_limited if not is_story else ''
+                }
+                container_response = requests.post(
+                    fallback_url,
+                    data=fallback_params,
+                    files=files,
+                    timeout=300
+                )
+            
+            if container_response.status_code == 200:
+                container_id = container_response.json().get('id')
+                print(f"[instagram] ✅ Fallback direct upload successful! Container: {container_id}")
+            else:
+                # Last resort: try video_url approach with our own hosted URL
+                print(f"[instagram] 🔄 Direct uploads failed, trying URL-based approach as last resort...")
+                
+                # Upload to tmpfiles.org as absolute last resort
+                with open(video_path_obj, 'rb') as video_file:
+                    tf = {'file': ('video.mp4', video_file, 'video/mp4')}
+                    temp_resp = requests.post('https://tmpfiles.org/api/v1/upload', files=tf, timeout=180)
+                
+                if temp_resp.status_code == 200 and temp_resp.json().get('status') == 'success':
+                    temp_url = temp_resp.json()['data']['url']
+                    video_url = temp_url.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+                    
+                    url_params = {
+                        'media_type': media_type,
+                        'video_url': video_url,
+                        'access_token': access_token,
+                        'caption': caption_limited
+                    }
+                    if not is_story:
+                        url_params['share_to_feed'] = 'false'
+                    
+                    container_response = requests.post(container_url, params=url_params, timeout=60)
+                    if container_response.status_code == 200:
+                        container_id = container_response.json().get('id')
+                        print(f"[instagram] ✅ URL fallback successful! Container: {container_id}")
+                    else:
+                        err = container_response.json().get('error', {}).get('message', 'Unknown')
+                        raise Exception(f"All Instagram upload methods failed. Last error: {err}")
+                else:
+                    raise Exception(f"Direct upload failed and tmpfiles.org also failed. Error: {error_msg}")
         
-        container_id = container_response.json().get('id')
         print(f"[instagram] ✅ Container created: {container_id}")
         
         # Step 3: Wait for processing
