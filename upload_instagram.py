@@ -97,13 +97,13 @@ def upload_to_instagram(video_path, caption, is_story=False):
             print(f"[instagram] ⚠️ Standard upload needs video_url, trying fallback...")
             raise Exception("Need to use video_url - not supported without upload_type=resumable")
         
-        # Resumable upload returns upload_url for binary upload
+        # Resumable upload returns 'uri' (or 'upload_url') for binary upload
         start_data = start_response.json()
-        upload_url = start_data.get('upload_url')
+        upload_url = start_data.get('upload_url') or start_data.get('uri')
         container_id = start_data.get('id')
         
         if not upload_url:
-            raise Exception(f"No upload_url in response: {start_data}")
+            raise Exception(f"No upload_url/uri in response: {start_data}")
         
         print(f"[instagram] ✅ Upload session started")
         print(f"[instagram] Upload URL: {upload_url[:50]}...")
@@ -113,21 +113,66 @@ def upload_to_instagram(video_path, caption, is_story=False):
         print(f"[instagram] 🚀 Step 2: Uploading video binary ({file_size_mb:.2f} MB)...")
         
         with open(video_path_obj, 'rb') as video_file:
-            upload_response = requests.post(
-                upload_url,
-                data=video_file.read(),
-                headers={
+            video_data = video_file.read()
+        
+        # Try multiple upload methods for rupload
+        upload_success = False
+        upload_methods = [
+            # Method 1: POST with OAuth header
+            {
+                'method': 'POST',
+                'headers': {
                     'Authorization': f'OAuth {access_token}',
                     'Content-Type': 'application/octet-stream',
-                    'Content-Length': str(video_path_obj.stat().st_size)
-                },
-                timeout=300
-            )
+                }
+            },
+            # Method 2: POST without auth (rupload URL already has auth)
+            {
+                'method': 'POST',
+                'headers': {
+                    'Content-Type': 'application/octet-stream',
+                }
+            },
+            # Method 3: PUT with raw binary
+            {
+                'method': 'PUT',
+                'headers': {
+                    'Content-Type': 'video/mp4',
+                }
+            },
+        ]
         
-        if upload_response.status_code != 200:
-            print(f"[instagram] ❌ Binary upload failed: HTTP {upload_response.status_code}")
-            print(f"[instagram] Response: {upload_response.text[:300]}")
-            raise Exception(f"Binary upload failed: HTTP {upload_response.status_code}")
+        for i, method in enumerate(upload_methods):
+            try:
+                if method['method'] == 'POST':
+                    upload_response = requests.post(
+                        upload_url,
+                        data=video_data,
+                        headers=method['headers'],
+                        timeout=300
+                    )
+                else:
+                    upload_response = requests.put(
+                        upload_url,
+                        data=video_data,
+                        headers=method['headers'],
+                        timeout=300
+                    )
+                
+                print(f"[instagram] Method {i+1}: HTTP {upload_response.status_code}")
+                
+                if upload_response.status_code in (200, 201, 204):
+                    upload_success = True
+                    break
+                else:
+                    print(f"[instagram]    Response: {upload_response.text[:200]}")
+            except Exception as e:
+                print(f"[instagram]    Method {i+1} error: {e}")
+                continue
+        
+        if not upload_success:
+            print(f"[instagram] ❌ All binary upload methods failed!")
+            raise Exception("Binary upload to Meta servers failed after all attempts")
         
         print(f"[instagram] ✅ Video uploaded to Meta servers!")
         
