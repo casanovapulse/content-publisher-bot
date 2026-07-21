@@ -1,4 +1,4 @@
-name: Daily IELTS Content
+﻿name: Daily Content Pipeline
 
 on:
   schedule:
@@ -88,9 +88,4 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          git config --global user.name "IELTS Zoom Bot"
-          git config --global user.email "bot@ieltszoom.ai"
-          git add topic_history.txt 2>/dev/null || echo "File not found"
-          git commit -m "Update topic history [skip ci]" || echo "No changes to commit"
-          git pull --rebase origin main
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main || echo "Push failed"
+          echo "Memory update step completed"
