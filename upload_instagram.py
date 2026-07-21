@@ -117,27 +117,36 @@ def upload_to_instagram(video_path, caption, is_story=False):
         
         # Try multiple upload methods for rupload
         upload_success = False
+        file_size = len(video_data)
+        
         upload_methods = [
-            # Method 1: POST with OAuth header
+            # Method 1: POST with OAuth + Offset header (required by rupload)
             {
                 'method': 'POST',
                 'headers': {
                     'Authorization': f'OAuth {access_token}',
+                    'offset': '0',
+                    'file_size': str(file_size),
                     'Content-Type': 'application/octet-stream',
                 }
             },
-            # Method 2: POST without auth (rupload URL already has auth)
+            # Method 2: POST with OAuth only
             {
                 'method': 'POST',
                 'headers': {
+                    'Authorization': f'OAuth {access_token}',
+                    'offset': '0',
                     'Content-Type': 'application/octet-stream',
                 }
             },
-            # Method 3: PUT with raw binary
+            # Method 3: PUT with OAuth + Offset
             {
                 'method': 'PUT',
                 'headers': {
-                    'Content-Type': 'video/mp4',
+                    'Authorization': f'OAuth {access_token}',
+                    'offset': '0',
+                    'file_size': str(file_size),
+                    'Content-Type': 'application/octet-stream',
                 }
             },
         ]
@@ -165,7 +174,8 @@ def upload_to_instagram(video_path, caption, is_story=False):
                     upload_success = True
                     break
                 else:
-                    print(f"[instagram]    Response: {upload_response.text[:200]}")
+                    resp_text = upload_response.text[:300]
+                    print(f"[instagram]    Response: {resp_text}")
             except Exception as e:
                 print(f"[instagram]    Method {i+1} error: {e}")
                 continue
