@@ -1,9 +1,10 @@
-"""
+﻿"""
 Instagram Reels Upload - Using tmpfiles.org for Public URL
 Uploads video to tmpfiles.org, then uses URL for Instagram API
 """
 
 import os
+import json
 import requests
 import time
 from pathlib import Path
@@ -179,7 +180,8 @@ def upload_to_instagram(video_path, caption, is_story=False):
             if status_data and 'error' in status_data:
                 error_code = status_data['error'].get('code', 0)
                 error_subcode = status_data['error'].get('error_subcode', 0)
-                print(f"[instagram] Status check error: code={error_code}, subcode={error_subcode}")
+                error_message = status_data['error'].get('message', '')
+                print(f"[instagram] Status check error: code={error_code}, subcode={error_subcode}, msg={error_message}")
                 if error_subcode == 33 or error_code == 100:
                     is_auth_error = True
                     if not status_check_broken:
@@ -200,8 +202,15 @@ def upload_to_instagram(video_path, caption, is_story=False):
                 print(f"[instagram] ✅ Video processing complete!")
                 break
             elif status_code == 'ERROR':
-                error_msg = status_data.get('error_message', 'Video processing failed')
+                error_msg = status_data.get('error_message', '')
+                if not error_msg:
+                    error_msg = status_data.get('error', {}).get('message', '')
+                if not error_msg:
+                    error_msg = status_data.get('status_detail', '')
+                if not error_msg:
+                    error_msg = 'Video processing failed (no details from Instagram API)'
                 print(f"[instagram] ❌ {error_msg}")
+                print(f"[instagram] Full status response: {json.dumps(status_data, indent=2)[:1000]}")
                 raise Exception(error_msg)
             elif status_code == 'UNKNOWN' and waited >= 120:
                 print(f"[instagram] Still UNKNOWN after {waited}s, publishing anyway...")
@@ -277,3 +286,4 @@ if __name__ == '__main__':
             print(f"\n❌ Failed: {e}")
     else:
         print(f"❌ Video not found: {video_file}")
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Multi-Platform Publisher for IELTS Zoom
 """
 
@@ -204,3 +204,4 @@ Learn the right way to use advanced English vocabulary for your IELTS exam. 🚀
 
 if __name__ == '__main__':
     main()
+

@@ -1,4 +1,4 @@
-from moviepy.editor import *
+﻿from moviepy.editor import *
 import json
 import os
 import wave
@@ -237,8 +237,18 @@ def assemble_video():
     if final_video.duration > 60:
         final_video = final_video.subclip(0, 60)
         
-    final_video.write_videofile("ielts_short.mp4", fps=24, codec="libx264", audio_codec="aac", threads=4)
+    final_video.write_videofile(
+        "ielts_short.mp4",
+        fps=30,
+        codec="libx264",
+        audio_codec="aac",
+        threads=4,
+        bitrate="3000k",
+        preset="medium",
+        ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "high", "-level:v", "4.0"]
+    )
     print(f"✅ Minimalist Video Generated: ielts_short.mp4")
 
 if __name__ == "__main__":
     assemble_video()
+

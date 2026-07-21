@@ -1,4 +1,4 @@
-"""
+﻿"""
 Video Processor - Quality Enhancement (Video + Audio)
 1. Upscale video to 1080x1920 with quality enhancement
 2. Remove watermark (bottom-right corner)
@@ -215,3 +215,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

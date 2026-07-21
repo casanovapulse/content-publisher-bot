@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import glob
 import requests
@@ -344,3 +344,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
